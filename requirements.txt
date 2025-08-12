@@ -1,0 +1,6 @@
+streamlit
+streamlit-folium
+folium
+shapely==2.0.4
+requests
+streamlit-autorefresh

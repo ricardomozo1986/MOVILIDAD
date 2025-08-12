@@ -1,0 +1,45 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Segmento demo 1",
+        "source": "sample"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -74.033,
+            4.9145
+          ],
+          [
+            -74.0305,
+            4.917
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Segmento demo 2",
+        "source": "sample"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -74.0285,
+            4.919
+          ],
+          [
+            -74.0255,
+            4.9225
+          ]
+        ]
+      }
+    }
+  ]
+}
