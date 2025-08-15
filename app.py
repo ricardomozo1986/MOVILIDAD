@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Dict, Any
 
 import streamlit as st
-from etl_cajica_routes import run_once
+from etl_cajica_routes_noshapely import run_once
 
 try:
     from streamlit_folium import st_folium
