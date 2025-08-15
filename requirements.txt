@@ -1,6 +1,5 @@
-streamlit
-streamlit-folium
-folium
-shapely==2.0.4
-requests
-streamlit-autorefresh
+streamlit==1.48.1
+streamlit-folium==0.25.1
+folium==0.20.0
+requests==2.32.4
+streamlit-autorefresh==1.0.1
