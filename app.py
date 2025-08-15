@@ -1,31 +1,17 @@
 # app.py
-# Streamlit app: Tráfico en vivo – Cajicá (MVP sin Waze)
-# - Ejecuta el ETL (Google Routes API traffic-aware) bajo demanda.
-# - Muestra el resultado en un mapa (Folium) con auto-refresco.
-#
-# Instrucciones (Streamlit Cloud):
-# 1) Sube este repo con: app.py, etl_cajica_routes.py, requirements.txt, cajica_segments.geojson
-# 2) En Settings -> Secrets, agrega tu clave:
-#       GOOGLE_MAPS_API_KEY = "tu_api_key"
-# 3) Deploy. En la app, pulsa "Actualizar velocidades" para ejecutar el ETL.
-# 4) Ajusta frecuencia de auto-refresco en la UI si lo deseas.
-#
-# NOTA: No se raspan tiles/colores de Google; se usa exclusivamente la API oficial de rutas.
-
-import os
-import json
-import time
-import streamlit as st
-from io import StringIO
+# Streamlit app: Tráfico en vivo – Cajicá (MVP sin Waze) con mini checklist
+import os, json, time
+from pathlib import Path
 from typing import Dict, Any
 
+import streamlit as st
 from etl_cajica_routes import run_once
 
 try:
     from streamlit_folium import st_folium
     import folium
 except Exception as e:
-    st.error("Faltan dependencias de mapas. Asegúrate de incluir 'folium' y 'streamlit-folium' en requirements.txt.")
+    st.error("Faltan dependencias: agrega 'folium' y 'streamlit-folium' en requirements.txt.")
     raise
 
 st.set_page_config(layout="wide", page_title="Cajicá – Tráfico en vivo (MVP sin Waze)")
@@ -44,6 +30,36 @@ if "GOOGLE_MAPS_API_KEY" in st.secrets:
 st.title("Cajicá – Tráfico en vivo (MVP sin Waze)")
 st.write("Este tablero estima **velocidades por subtramo** usando **Google Routes API** con `routingPreference=TRAFFIC_AWARE`. No se extraen colores/tiles de Google.")
 
+# === Mini Checklist de estado ===
+with st.expander("✅ Checklist de estado (clic para ver)", expanded=True):
+    ok_api = "GOOGLE_MAPS_API_KEY" in st.secrets and bool(st.secrets["GOOGLE_MAPS_API_KEY"])
+    st.markdown(f"- {'✅' if ok_api else '❌'} **API Key de Google** (en *Secrets*): " + ("detectada" if ok_api else "NO detectada"))
+
+    seg_path = Path("cajica_segments.geojson")
+    ok_seg = seg_path.exists()
+    st.markdown(f"- {'✅' if ok_seg else '❌'} **Red vial** `cajica_segments.geojson`: " + ("cargada" if ok_seg else "no encontrada"))
+
+    spd_path = Path('cajica_speeds.geojson')
+    ok_spd = spd_path.exists()
+    last_update = "—"
+    n_feats = 0
+    if ok_spd:
+        try:
+            gj_tmp = json.load(open(spd_path, 'r', encoding='utf-8'))
+            feats = gj_tmp.get("features", [])
+            n_feats = len(feats)
+            times = [f.get("properties",{}).get("updated_at") for f in feats if isinstance(f, dict)]
+            times = [t for t in times if t]
+            if times:
+                last_update = sorted(times)[-1]
+        except Exception:
+            ok_spd = False
+    st.markdown(f"- {'✅' if ok_spd else '❌'} **Salida ETL** `cajica_speeds.geojson`: " + ("existe" if ok_spd else "no existe"))
+    st.markdown(f"  - Subtramos con dato: **{n_feats}**")
+    st.markdown(f"  - Última actualización: **{last_update}**")
+    st.caption("Sugerencia: si el ETL no corre, revisa la API Key en *Secrets* y pulsa **Actualizar velocidades**.")
+
+# Controles principales
 col1, col2, col3 = st.columns([1,1,2])
 
 with col1:
@@ -62,7 +78,6 @@ with col2:
     st.info("Salida del ETL: **cajica_speeds.geojson**. Se refresca al ejecutar el botón o con auto-refresco.")
     if auto_refresh_sec > 0:
         st.caption(f"Auto-refresco activado cada {auto_refresh_sec} s.")
-        st.autorefresh = st.experimental_rerun  # placeholder; below we use st_autorefresh
 
 with col3:
     st.markdown("""
@@ -83,11 +98,10 @@ if run_clicked:
     except Exception as e:
         st.error(f"Error en ETL: {e}")
 
-# Cargar salida (si existe) o mostrar demo
+# Cargar salida (si existe) o demo
 def load_or_demo() -> Dict[str, Any]:
     path = "cajica_speeds.geojson"
     if not os.path.exists(path):
-        # Crear demo mínima
         demo = {
             "type": "FeatureCollection",
             "features": [
@@ -146,15 +160,7 @@ for feat in features:
 
 st_folium(m, width=1200, height=720)
 
-# Auto refresh
+# Auto refresh (simple)
 if auto_refresh_sec and auto_refresh_sec > 0:
-    st.experimental_singleton.clear()  # harmless hint for clarity
-    st.experimental_rerun = None
-    st.experimental_set_query_params(ts=int(time.time()))
-    st.experimental_show = None
-    st_autorefresh = st.experimental_rerun  # compatibility no-op
-    st.experimental_memo.clear()  # clear memo caches (Streamlit <1.25 compatibility)
-
-from streamlit_autorefresh import st_autorefresh as _st_autorefresh
-if auto_refresh_sec and auto_refresh_sec > 0:
-    _st_autorefresh(interval=auto_refresh_sec * 1000, key="auto_refresh_key")
+    from streamlit_autorefresh import st_autorefresh
+    st_autorefresh(interval=auto_refresh_sec * 1000, key="auto_refresh_key")
